@@ -39,3 +39,7 @@ O leitor opera em protocolo **I2C** (chaves DIP da placa configuradas em `1` e `
 * Implementação de sessão autenticada com *Time-To-Live* (TTL).
 * Integração com o banco de dados SQLite local (substituindo a lista estática de UIDs).
 * Compartilhamento do barramento I2C com o módulo RTC `DS3231SN`.
+
+## Configuração da Biblioteca TFT_eSPI
+
+Para compilar corretamente para a placa **ESP32-2432S028 (CYD)**, substitua o arquivo `User_Setup.h` na pasta de instalação da biblioteca (`Documents\Arduino\libraries\TFT_eSPI\User_Setup.h`) pelo arquivo de referência incluído neste diretório (`firmware-cyd/User_Setup.h`), que utiliza o driver `ILI9341_2_DRIVER` e a pinagem SPI dedicada do display (`CS=15`, `DC=2`, `MOSI=13`, `MISO=12`, `SCLK=14`, `BL=21`).
