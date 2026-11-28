@@ -1,5 +1,15 @@
 #define USER_SETUP_INFO "CYD_ESP32_2432S028"
 
+// Compatibilidade com arduino-esp32 >= 4.0 (ESP-IDF 6 removeu VSPI_HOST/HSPI_HOST)
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 4)
+  #ifndef VSPI_HOST
+    #define VSPI_HOST SPI3_HOST
+  #endif
+  #ifndef HSPI_HOST
+    #define HSPI_HOST SPI2_HOST
+  #endif
+#endif
+
 // Use o driver _2 para corrigir a orientacao da CYD
 #define ILI9341_2_DRIVER
 

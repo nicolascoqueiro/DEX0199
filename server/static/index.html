@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEX0199 — Painel do Laboratório Maker</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">DEX0199</span>
+      <span class="subtitle">Gestão de Laboratório Maker</span>
+    </div>
+    <div class="topbar-meta">
+      <span id="status-servidor" class="badge badge-ok">Online</span>
+      <span id="hora-servidor" class="mono">--:--:--</span>
+      <a href="/backup.db" class="btn btn-sm">Baixar Backup (.db)</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="nav-tabs">
+      <button class="nav-btn active" data-tab="resumo">Visão Geral</button>
+      <button class="nav-btn" data-tab="emprestimos">Empréstimos <span class="pill" id="pill-emp">0</span></button>
+      <button class="nav-btn" data-tab="itens">Inventário</button>
+      <button class="nav-btn" data-tab="tipos">Tipos &amp; Estoque</button>
+      <button class="nav-btn" data-tab="aulas">Aulas (Experiências)</button>
+      <button class="nav-btn" data-tab="ocorrencias">Ocorrências <span class="pill" id="pill-oco">0</span></button>
+      <button class="nav-btn" data-tab="usuarios">Usuários (Crachás)</button>
+      <button class="nav-btn" data-tab="conferencias">Conferências</button>
+      <button class="nav-btn" data-tab="historico">Histórico</button>
+      <button class="nav-btn" data-tab="auditoria">Auditoria &amp; Alertas <span class="pill pill-warn" id="pill-alerta">0</span></button>
+      <button class="nav-btn" data-tab="config">Configuração &amp; Teste</button>
+    </nav>
+
+    <main class="content">
+      <div id="toast" class="toast hidden"></div>
+
+      <!-- VISAO GERAL -->
+      <section id="tab-resumo" class="tab active">
+        <h1>Visão Geral</h1>
+        <div class="cards" id="resumo-cards"></div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2>Dispositivos (ESP32)</h2>
+            <div id="resumo-dispositivos"></div>
+          </div>
+          <div class="card">
+            <h2>Aulas Abertas Agora</h2>
+            <div id="resumo-aulas"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2>Estoque por Quantidade</h2>
+            <div id="resumo-estoque"></div>
+          </div>
+          <div class="card">
+            <h2>Últimas Leituras (NFC / QR)</h2>
+            <p class="hint">Aproxime um crachá ou etiqueta nos leitores para ver o código aqui e copiar para o cadastro.</p>
+            <div id="resumo-leituras"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EMPRESTIMOS -->
+      <section id="tab-emprestimos" class="tab">
+        <div class="section-head">
+          <h1>Empréstimos em Aberto</h1>
+          <button class="btn" onclick="carregarEmprestimos()">Atualizar</button>
+        </div>
+        <div class="card">
+          <div id="lista-emprestimos"></div>
+        </div>
+      </section>
+
+      <!-- INVENTARIO (ITENS FISICOS) -->
+      <section id="tab-itens" class="tab">
+        <div class="section-head">
+          <h1>Inventário (Itens Individuais)</h1>
+          <button class="btn btn-primary" onclick="abrirModalItem()">+ Novo Item</button>
+        </div>
+        <div class="filters">
+          <input type="text" id="filtro-item-busca" placeholder="Buscar por rótulo, NFC, QR ou tipo..." oninput="carregarItens()">
+          <select id="filtro-item-estado" onchange="carregarItens()">
+            <option value="">Ativos (exceto removidos)</option>
+            <option value="disponivel">Disponível</option>
+            <option value="emprestado">Emprestado</option>
+            <option value="manutencao">Manutenção</option>
+            <option value="perdido">Perdido</option>
+            <option value="removido">Removido</option>
+          </select>
+        </div>
+        <div class="card">
+          <div id="lista-itens"></div>
+        </div>
+      </section>
+
+      <!-- TIPOS & ESTOQUE -->
+      <section id="tab-tipos" class="tab">
+        <div class="section-head">
+          <h1>Tipos de Item &amp; Estoque por Quantidade</h1>
+          <button class="btn btn-primary" onclick="abrirModalTipo()">+ Novo Tipo</button>
+        </div>
+        <div class="card">
+          <div id="lista-tipos"></div>
+        </div>
+      </section>
+
+      <!-- AULAS -->
+      <section id="tab-aulas" class="tab">
+        <div class="section-head">
+          <h1>Aulas (Experiências Pedagógicas)</h1>
+          <button class="btn" onclick="carregarAulas()">Atualizar</button>
+        </div>
+        <div class="card">
+          <div id="lista-aulas"></div>
+        </div>
+      </section>
+
+      <!-- OCORRENCIAS -->
+      <section id="tab-ocorrencias" class="tab">
+        <div class="section-head">
+          <h1>Ocorrências</h1>
+          <label class="checkbox-inline">
+            <input type="checkbox" id="filtro-oco-abertas" onchange="carregarOcorrencias()"> Somente abertas
+          </label>
+        </div>
+        <div class="card">
+          <div id="lista-ocorrencias"></div>
+        </div>
+      </section>
+
+      <!-- USUARIOS -->
+      <section id="tab-usuarios" class="tab">
+        <div class="section-head">
+          <h1>Usuários e Crachás NFC</h1>
+          <button class="btn btn-primary" onclick="abrirModalUsuario()">+ Novo Usuário</button>
+        </div>
+        <div class="card">
+          <div id="lista-usuarios"></div>
+        </div>
+      </section>
+
+      <!-- CONFERENCIAS -->
+      <section id="tab-conferencias" class="tab">
+        <div class="section-head">
+          <h1>Conferências de Inventário</h1>
+          <button class="btn" onclick="carregarConferencias()">Atualizar</button>
+        </div>
+        <div class="card">
+          <div id="lista-conferencias"></div>
+        </div>
+        <div id="box-faltantes" class="card hidden">
+          <h2>Itens Faltantes na Conferência <span id="faltantes-titulo"></span></h2>
+          <div id="lista-faltantes"></div>
+        </div>
+      </section>
+
+      <!-- HISTORICO -->
+      <section id="tab-historico" class="tab">
+        <div class="section-head">
+          <h1>Histórico de Movimentações</h1>
+        </div>
+        <div class="filters">
+          <input type="text" id="filtro-hist-busca" placeholder="Buscar por item, operador ou observação..." oninput="carregarHistorico()">
+          <select id="filtro-hist-tipo" onchange="carregarHistorico()">
+            <option value="">Todos os tipos</option>
+            <option value="emprestimo">Empréstimo</option>
+            <option value="devolucao">Devolução</option>
+            <option value="cadastro">Cadastro</option>
+            <option value="remocao">Remoção</option>
+            <option value="ocorrencia">Ocorrência</option>
+            <option value="inventario_leitura">Conferência (lido)</option>
+            <option value="inventario_faltante">Conferência (faltante)</option>
+            <option value="feedback">Feedback</option>
+          </select>
+        </div>
+        <div class="card">
+          <div id="lista-historico"></div>
+        </div>
+      </section>
+
+      <!-- AUDITORIA -->
+      <section id="tab-auditoria" class="tab">
+        <div class="section-head">
+          <h1>Auditoria &amp; Alertas</h1>
+          <label class="checkbox-inline">
+            <input type="checkbox" id="filtro-aud-alertas" onchange="carregarAuditoria()"> Somente alertas ativos
+          </label>
+        </div>
+        <div class="card">
+          <div id="lista-auditoria"></div>
+        </div>
+      </section>
+
+      <!-- CONFIGURACAO E SIMULADOR -->
+      <section id="tab-config" class="tab">
+        <h1>Configuração &amp; Simulador de Leitura</h1>
+        <div class="grid-2">
+          <div class="card">
+            <h2>Parâmetros do Laboratório</h2>
+            <form id="form-config" onsubmit="salvarConfig(event)">
+              <div class="field">
+                <label>TTL da sessão no Kiosk (minutos)</label>
+                <input type="number" id="cfg-ttl-sessao" min="1" required>
+              </div>
+              <div class="field">
+                <label>TTL da autorização de monitor (horas)</label>
+                <input type="number" id="cfg-ttl-aut" min="1" required>
+              </div>
+              <div class="field">
+                <label>Prazo padrão empréstimo CASA (dias)</label>
+                <input type="number" id="cfg-prazo-casa" min="1" required>
+              </div>
+              <button class="btn btn-primary" type="submit">Salvar Parâmetros</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>Conexão das ESP32</h2>
+            <div id="info-conexao" class="mono-box"></div>
+            <h2 style="margin-top: 1.25rem;">Simular Leitura da Câmera (ESP32-S3)</h2>
+            <p class="hint">Envia um código para a fila de leituras como se a câmera ESP32-S3 tivesse lido um QR Code. Útil para testar o CYD sem a câmera conectada.</p>
+            <form id="form-simular" onsubmit="simularLeitura(event)" class="inline-form">
+              <input type="text" id="sim-codigo" placeholder="Ex: DEX-0001" required>
+              <button class="btn btn-primary" type="submit">Enviar QR</button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL GENÉRICO -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="fecharModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <h2 id="modal-titulo"></h2>
+        <button class="btn-icon" onclick="fecharModal()">&times;</button>
+      </div>
+      <div id="modal-corpo"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

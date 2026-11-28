@@ -1,47 +1,58 @@
-﻿# Firmware Terminal Kiosk (ESP32-2432S028 / CYD)
+﻿# Firmware Terminal Kiosk (`ESP32-2432S028` / CYD)
 
-Firmware responsável pela interface humano-computador (IHC), leitura de tags RFID/NFC, controle de acesso por perfil e comunicação Wi-Fi com o nó câmera (`ESP32-S3`) no terminal **ESP32-2432S028 (Cheap Yellow Display)**, desenvolvido na Arduino IDE.
+Firmware responsável pela interface touchscreen, leitura de crachás e tags NFC (`PN532`), relógio opcional (`DS3231`) e comunicação via Wi-Fi (HTTP JSON) com o servidor local Python/SQLite do **DEX0199**.
 
-## Ambiente de Desenvolvimento e Bibliotecas
+## Bibliotecas Necessárias (Arduino IDE)
 
-O projeto foi compilado na **Arduino IDE** utilizando as seguintes bibliotecas:
+Instale pelo **Gerenciador de Bibliotecas**:
+- `TFT_eSPI` (Bodmer)
+- `XPT2046_Touchscreen` (Paul Stoffregen)
+- `Adafruit PN532` + `Adafruit BusIO`
+- `RTClib` (Adafruit)
+- `ArduinoJson` (v7 — Benoit Blanchon)
 
-* `TFT_eSPI`: Controle do display TFT LCD 2.8" (driver `ILI9341_2_DRIVER`).
-* `XPT2046_Touchscreen`: Leitura do painel resistivo touchscreen via barramento SPI dedicado.
-* `Adafruit_PN532` e `Adafruit_BusIO`: Comunicação I2C com o leitor RFID/NFC.
-* `WiFi` e `WebServer`: Servidor HTTP local (porta 80) para integração com o `ESP32-S3`.
+> **Importante (`TFT_eSPI`):** substitua o arquivo `User_Setup.h` dentro da pasta da biblioteca (`Documents\Arduino\libraries\TFT_eSPI\User_Setup.h`) pelo arquivo [User_Setup.h](User_Setup.h) deste diretório.
 
-## Configuração da Biblioteca TFT_eSPI
+## Configuração Antes do Upload
 
-Para compilar corretamente para a placa **ESP32-2432S028 (CYD)**, substitua o arquivo `User_Setup.h` na pasta de instalação da biblioteca (`Documents\Arduino\libraries\TFT_eSPI\User_Setup.h`) pelo arquivo de referência incluído neste diretório (`firmware-cyd/User_Setup.h`), que define o driver `ILI9341_2_DRIVER` e os pinos do display (`CS=15`, `DC=2`, `MOSI=13`, `MISO=12`, `SCLK=14`, `BL=21`).
+Edite [config.h](config.h):
+```cpp
+#define WIFI_SSID   "SUA_REDE"
+#define WIFI_PASS   "SUA_SENHA"
+#define SERVER_HOST "192.168.1.100" // IP exibido ao rodar `python server/dex_server.py`
+#define SERVER_PORT 8000
+#define API_KEY     "dex0199-chave-local"
+```
 
-## Configuração de Hardware e Pinagem
+Na Arduino IDE, selecione a placa **ESP32 Dev Module** e grave [firmware-cyd.ino](firmware-cyd.ino).
 
-### Touchscreen (XPT2046 — SPI Dedicado)
-Na placa CYD, o controlador de toque utiliza um barramento SPI separado do display:
+## Pinagem
 
+### Touchscreen (`XPT2046` — SPI dedicado interno da CYD)
 | Pino CYD | Função |
 | :--- | :--- |
-| `IO33` | Chip Select (`XPT2046_CS`) |
-| `IO36` | Interrupção (`XPT2046_IRQ`) |
-| `IO32` | MOSI (`XPT2046_MOSI`) |
-| `IO39` | MISO (`XPT2046_MISO`) |
-| `IO25` | Clock (`XPT2046_CLK`) |
+| `IO33` | `XPT2046_CS` |
+| `IO36` | `XPT2046_IRQ` |
+| `IO32` | `XPT2046_MOSI` |
+| `IO39` | `XPT2046_MISO` |
+| `IO25` | `XPT2046_CLK` |
 
-### Módulo NFC (Elechouse PN532 V3 Red — I2C Dedicado)
-O leitor opera em protocolo **I2C** (chaves DIP em `1` e `0`) no conector `CN1`, utilizando `TwoWire(1)` para evitar conflitos com o barramento SPI:
+### Barramento I2C Externo (Conector `CN1` — `PN532` + `DS3231` opcional)
+Configure as chaves DIP do módulo **PN532 V3 Red** para modo **I2C** (`1` e `0`). O `DS3231` (endereço `0x68`) compartilha o mesmo barramento com o `PN532` (`0x24`) e é opcional: se não estiver conectado, o firmware inicia normalmente.
 
-| Pino CYD (`CN1`) | Pino PN532 V3 | Função |
-| :--- | :--- | :--- |
-| `3V3` | `VCC` | Alimentação 3.3V |
-| `GND` | `GND` | Referência Terra |
-| `IO27` | `SDA / TXD` | Linha de Dados I2C (`NFC_SDA`) |
-| `IO22` | `SCL / RXD` | Linha de Clock I2C (`NFC_SCL`) |
+| Pino CYD (`CN1`) | PN532 V3 | DS3231 (Opcional) | Função |
+| :--- | :--- | :--- | :--- |
+| `3V3` | `VCC` | `VCC` | Alimentação 3.3V |
+| `GND` | `GND` | `GND` | Terra |
+| `IO27` | `SDA / TXD` | `SDA` | Dados I2C |
+| `IO22` | `SCL / RXD` | `SCL` | Clock I2C |
 
-## Funcionalidades Implementadas (MVP)
+## Telas e Fluxos no Terminal
 
-1. **Autenticação por Perfil (`PROFESSOR` / `MONITOR`):** Leitura de crachá ISO14443A com exibição do perfil de acesso antes da liberação do menu e encerramento automático por inatividade (TTL de 2 minutos).
-2. **Interface Touch:** Navegação tátil entre as telas de **Inventário** (listagem de status e remoção), **Cadastrar Item** e **Empréstimo / Devolução** (modalidades `BANCADA` e `CASA`).
-3. **API HTTP Local (Integração `ESP32-S3`):**
-   * `GET /api/status`: Retorna o estado online, tela ativa e total de itens.
-   * `GET/POST /api/qrcode?code=<CODIGO>`: Recebe o payload do QR Code lido pela câmera do `ESP32-S3` e executa o cadastro ou movimentação automaticamente na tela ativa.
+1. **Login por Crachá NFC:** valida no servidor, exibe o perfil (`PROFESSOR`, `MONITOR` ou `ADMIN`) e renova o TTL a cada toque ou leitura. Crachás não cadastrados exibem o UID na tela para facilitar o cadastro no painel web.
+2. **Empréstimo / Devolução:** modalidades `BANCADA` (vinculada à aula aberta) e `CASA` (com prazo). Lê tanto NFC quanto QR Codes enviados pela câmera ESP32-S3. Itens controlados por quantidade abrem o seletor numérico (`-5`, `-1`, `+1`, `+5`).
+3. **Gestão de Aula:** professor inicia a aula, autoriza monitores aproximando o crachá do monitor e encerra a aula definindo o destino de pendências e respondendo à pesquisa de humor (`1` a `5`).
+4. **Inventário & Consulta:** lista paginada de itens e estoque; aproximar uma tag/QR nesta tela consulta o estado atual do item.
+5. **Cadastrar Item:** seleciona o tipo de item e lê a tag NFC ou QR Code para cadastrar direto no banco.
+6. **Ocorrências:** registra `DANIFICADO`, `PERDIDO`, `ENCONTRADO` ou `FURTO` via NFC/QR.
+7. **Conferência de Inventário:** inicia sessão de conferência, conta itens lidos vs. faltantes e encerra gerando relatório no painel web.
